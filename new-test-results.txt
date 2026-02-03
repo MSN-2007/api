@@ -1,0 +1,151 @@
+🧪 Starting Answer Evaluation Tests...
+
+Make sure the dev server is running: npm run dev
+
+
+============================================================
+TEST: Good Answer - Specific and Honest
+============================================================
+Question: How does the scoring system work in this API?
+Answer: The scoring system is deterministic and rule-based, explicitly avoiding LLM involvement in score cal...
+
+📊 EVALUATION RESULTS:
+   Understanding Score: 0/100
+   Confidence: low
+
+   Breakdown:
+   - Consistency: 0/25
+   - Specificity: 0/25
+   - Depth: 0/25
+   - Honesty: 0/25
+
+   🚩 Flags: evaluation_failed
+
+   📝 Notes:
+   - Evaluation system error
+
+Waiting 2 seconds between tests...
+
+============================================================
+TEST: Paraphrasing Answer
+============================================================
+Question: What technologies does this project use?
+Answer: This project uses Next.js 15 with the App Router, TypeScript, GitHub REST API, and Gemini API (gemin...
+
+📊 EVALUATION RESULTS:
+   Understanding Score: 0/100
+   Confidence: low
+
+   Breakdown:
+   - Consistency: 0/25
+   - Specificity: 0/25
+   - Depth: 0/25
+   - Honesty: 0/25
+
+   🚩 Flags: evaluation_failed
+
+   📝 Notes:
+   - Evaluation system error
+
+Waiting 2 seconds between tests...
+
+============================================================
+TEST: Generic Answer
+============================================================
+Question: Why was Next.js chosen for this project?
+Answer: Next.js was chosen because it provides excellent performance and scalability. It follows industry be...
+
+📊 EVALUATION RESULTS:
+   Understanding Score: 0/100
+   Confidence: low
+
+   Breakdown:
+   - Consistency: 0/25
+   - Specificity: 0/25
+   - Depth: 0/25
+   - Honesty: 0/25
+
+   🚩 Flags: evaluation_failed
+
+   📝 Notes:
+   - Evaluation system error
+
+Waiting 2 seconds between tests...
+
+============================================================
+TEST: Hallucinated Answer
+============================================================
+Question: How does the API handle authentication?
+Answer: The API uses JWT tokens for authentication with a Redis-based session store. Users authenticate via ...
+
+📊 EVALUATION RESULTS:
+   Understanding Score: 5/100
+   Confidence: high
+
+   Breakdown:
+   - Consistency: 0/25
+   - Specificity: 5/25
+   - Depth: 0/25
+   - Honesty: 0/25
+
+   🚩 Flags: hallucinated_details
+
+   📝 Notes:
+   - The answer directly contradicts the README's explicit statement 'No Auth Required'.
+   - It introduces multiple technologies (JWT, Redis, OAuth2, PostgreSQL) that are not mentioned in the README.
+   - The described authentication flow is entirely fabricated and demonstrates a complete lack of understanding of the project's stated features.
+
+Waiting 2 seconds between tests...
+
+============================================================
+TEST: Question Avoidance
+============================================================
+Question: What are the limitations of the deterministic scoring approach?
+Answer: The project is well-designed with a clean architecture. It uses TypeScript for type safety and Next....
+
+📊 EVALUATION RESULTS:
+   Understanding Score: 5/100
+   Confidence: high
+
+   Breakdown:
+   - Consistency: 5/25
+   - Specificity: 0/25
+   - Depth: 0/25
+   - Honesty: 0/25
+
+   🚩 Flags: generic_language, question_avoidance, paraphrasing_detected
+
+   📝 Notes:
+   - The answer completely fails to address the question about the limitations of the deterministic scoring approach.
+   - Instead, it provides a generic positive review of the project's features and tech stack, largely paraphrasing elements from the README.
+   - No specific constraints, tradeoffs, or limitations are mentioned, despite the question explicitly asking for them.
+
+Waiting 2 seconds between tests...
+
+============================================================
+TEST: Brief/Minimally Sufficient Answer
+============================================================
+Question: What is the purpose of the API?
+Answer: The API analyzes GitHub repositories. It provides a summary, technical questions, and a deterministi...
+
+📊 EVALUATION RESULTS:
+   Understanding Score: 0/100
+   Confidence: low
+
+   Breakdown:
+   - Consistency: 0/25
+   - Specificity: 0/25
+   - Depth: 0/25
+   - Honesty: 0/25
+
+   🚩 Flags: evaluation_failed
+
+   📝 Notes:
+   - Evaluation system error
+
+Waiting 2 seconds between tests...
+
+============================================================
+✅ All tests completed!
+============================================================
+

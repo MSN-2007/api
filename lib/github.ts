@@ -50,6 +50,68 @@ export function parseGitHubUrl(url: string): RepoInfo {
 }
 
 /**
+ * Fetch generic file content from GitHub repository
+ */
+export async function fetchFileContent(owner: string, repo: string, path: string): Promise<string> {
+    const token = process.env.GITHUB_TOKEN;
+    const headers: HeadersInit = {
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'repo-analyzer'
+    };
+
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    try {
+        const response = await fetch(
+            `${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${path}`,
+            { headers }
+        );
+
+        if (response.status === 404) {
+            return ''; // File not found
+        }
+
+        if (!response.ok) {
+            if (response.status === 403) {
+                throw new Error('GitHub API rate limit exceeded or repository is private');
+            }
+            throw new Error(`GitHub API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Handle case where path is a directory
+        if (Array.isArray(data)) {
+            return '';
+        }
+
+        // Decode base64 content
+        return decodeBase64(data.content);
+    } catch (error) {
+        if (error instanceof Error) {
+            throw error;
+        }
+        return '';
+    }
+}
+
+/**
+ * Fetch package.json content
+ */
+export async function fetchPackageJson(owner: string, repo: string): Promise<any> {
+    const content = await fetchFileContent(owner, repo, 'package.json');
+    if (!content) return null;
+
+    try {
+        return JSON.parse(content);
+    } catch {
+        return null;
+    }
+}
+
+/**
  * Fetch README content from GitHub repository
  */
 export async function fetchReadme(owner: string, repo: string): Promise<string> {

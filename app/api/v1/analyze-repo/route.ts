@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { parseGitHubUrl, fetchReadme, fetchFileTree } from '@/lib/github';
+import { parseGitHubUrl, fetchReadme, fetchFileTree, fetchPackageJson } from '@/lib/github';
 import { calculateScore } from '@/lib/scoring';
 import { analyzeRepository } from '@/lib/llm';
 
@@ -40,11 +40,13 @@ export async function POST(request: NextRequest) {
         // Fetch repository data from GitHub
         let readme: string;
         let files: string[];
+        let packageJson: any = null;
 
         try {
-            [readme, files] = await Promise.all([
+            [readme, files, packageJson] = await Promise.all([
                 fetchReadme(owner, name),
-                fetchFileTree(owner, name)
+                fetchFileTree(owner, name),
+                fetchPackageJson(owner, name)
             ]);
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to fetch repository';
@@ -73,7 +75,7 @@ export async function POST(request: NextRequest) {
         const scorecard = calculateScore(readme, files);
 
         // Get LLM analysis
-        const analysis = await analyzeRepository(readme, files, owner, name);
+        const analysis = await analyzeRepository(readme, files, owner, name, packageJson);
 
         // Build response
         const response = {

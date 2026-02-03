@@ -17,7 +17,8 @@ export async function analyzeRepository(
     readme: string,
     files: string[],
     owner: string,
-    repo: string
+    repo: string,
+    packageJson: any = null
 ): Promise<LLMAnalysis> {
     const apiKey = process.env.GEMINI_API_KEY;
 
@@ -34,7 +35,8 @@ export async function analyzeRepository(
         };
     }
 
-    const prompt = buildPrompt(readme, files, owner, repo);
+    const techStack = extractTechStack(packageJson);
+    const prompt = buildPrompt(readme, files, owner, repo, techStack);
 
     try {
         const response = await fetch(
@@ -55,7 +57,7 @@ export async function analyzeRepository(
                         }
                     ],
                     generationConfig: {
-                        temperature: 0.3,
+                        temperature: 0.2, // Lower temperature for factual analysis
                         maxOutputTokens: 1000
                     }
                 })
@@ -100,34 +102,48 @@ export async function analyzeRepository(
 }
 
 /**
- * Build prompt for LLM
+ * Extract tech stack from package.json
  */
-function buildPrompt(readme: string, files: string[], owner: string, repo: string): string {
-    const fileList = files.slice(0, 100).join('\n'); // Limit to 100 files for prompt
+function extractTechStack(packageJson: any): string {
+    if (!packageJson) return 'Unknown (No package.json found)';
 
-    return `You are analyzing a GitHub repository.
+    const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
+    const stack = Object.keys(dependencies).join(', ');
 
-Repository: ${owner}/${repo}
-
-README (truncated to 10,000 chars):
-${readme || 'No README found'}
-
-File tree (first 100 files):
-${fileList}
-
-Return a JSON object with:
-{
-  "summary": ["bullet point 1", "bullet point 2", ...],
-  "technical_questions": ["question 1", "question 2", "question 3"],
-  "notes": ["note 1", "note 2", ...]
+    return stack || 'No dependencies found';
 }
 
-Rules:
-- summary: 3-5 bullet points describing the project's purpose, tech stack, and key features
-- technical_questions: exactly 3 deep technical questions about architecture, design decisions, or implementation details
-- notes: 2-4 factual observations about the codebase (e.g., testing approach, documentation quality, project maturity)
-- Return ONLY valid JSON, no markdown code blocks
-- Do NOT include scores or ratings`;
+/**
+ * Build prompt for LLM
+ */
+function buildPrompt(readme: string, files: string[], owner: string, repo: string, techStack: string): string {
+    const fileList = files.slice(0, 100).join('\n'); // Limit to 100 files for prompt
+
+    return `You are a senior engineer reviewing a GitHub project.
+
+KNOWN TECH STACK:
+${techStack}
+
+README (truncated):
+${readme.slice(0, 15000) || 'No README found'}
+
+FILE STRUCTURE (context):
+${fileList}
+
+TASKS:
+1. Summarize the project in 5 factual bullet points.
+2. Ask exactly 3 deep technical questions that test understanding of the detected tech stack.
+   - Questions must reference the stack explicitly.
+   - No generic questions like "How to install?".
+   - Focus on architecture, integration patterns, or specific library usage.
+3. Provide 3 specific notes/observations about the codebase maturity or structure.
+
+Return STRICT JSON format:
+{
+  "summary": ["point 1", "point 2", ...],
+  "technical_questions": ["question 1", "question 2", "question 3"],
+  "notes": ["note 1", "note 2", "note 3"]
+}`;
 }
 
 /**

@@ -74,6 +74,11 @@ The total is capped at 100 points. This approach ensures consistent, reproducibl
         name: 'Question Avoidance',
         question: 'What are the limitations of the deterministic scoring approach?',
         answer: `The project is well-designed with a clean architecture. It uses TypeScript for type safety and Next.js for modern web development. The scoring system provides consistent results and the API is production-ready with proper error handling.`
+    },
+    {
+        name: 'Brief/Minimally Sufficient Answer',
+        question: 'What is the purpose of the API?',
+        answer: 'The API analyzes GitHub repositories. It provides a summary, technical questions, and a deterministic score based on the repo structure and content.'
     }
 ];
 
@@ -99,7 +104,8 @@ async function runTest(testCase) {
 
         if (!response.ok) {
             const error = await response.json();
-            console.error('❌ Error:', error);
+            console.error('❌ Error Status:', response.status);
+            console.error('❌ Error Details:', JSON.stringify(error, null, 2));
             return;
         }
 
@@ -134,7 +140,8 @@ async function runAllTests() {
 
     for (const testCase of testCases) {
         await runTest(testCase);
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Rate limiting
+        console.log('\nWaiting 2 seconds between tests...');
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Increased rate limit wait
     }
 
     console.log(`\n${'='.repeat(60)}`);
