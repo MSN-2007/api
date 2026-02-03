@@ -1,0 +1,116 @@
+🧪 Starting Answer Evaluation Tests...
+
+Make sure the dev server is running: npm run dev
+
+
+============================================================
+TEST: Good Answer - Specific and Honest
+============================================================
+Question: How does the scoring system work in this API?
+Answer: The scoring system is deterministic and rule-based, explicitly avoiding LLM involvement in score cal...
+
+📊 EVALUATION RESULTS:
+   Understanding Score: 0/100
+   Confidence: low
+
+   Breakdown:
+   - Consistency: 0/25
+   - Specificity: 0/25
+   - Depth: 0/25
+   - Honesty: 0/25
+
+   🚩 Flags: evaluation_failed
+
+   📝 Notes:
+   - Evaluation system error
+
+============================================================
+TEST: Paraphrasing Answer
+============================================================
+Question: What technologies does this project use?
+Answer: This project uses Next.js 15 with the App Router, TypeScript, GitHub REST API, and Gemini API (gemin...
+
+📊 EVALUATION RESULTS:
+   Understanding Score: 0/100
+   Confidence: low
+
+   Breakdown:
+   - Consistency: 0/25
+   - Specificity: 0/25
+   - Depth: 0/25
+   - Honesty: 0/25
+
+   🚩 Flags: evaluation_failed
+
+   📝 Notes:
+   - Evaluation system error
+
+============================================================
+TEST: Generic Answer
+============================================================
+Question: Why was Next.js chosen for this project?
+Answer: Next.js was chosen because it provides excellent performance and scalability. It follows industry be...
+
+📊 EVALUATION RESULTS:
+   Understanding Score: 0/100
+   Confidence: low
+
+   Breakdown:
+   - Consistency: 0/25
+   - Specificity: 0/25
+   - Depth: 0/25
+   - Honesty: 0/25
+
+   🚩 Flags: evaluation_failed
+
+   📝 Notes:
+   - Evaluation system error
+
+============================================================
+TEST: Hallucinated Answer
+============================================================
+Question: How does the API handle authentication?
+Answer: The API uses JWT tokens for authentication with a Redis-based session store. Users authenticate via ...
+
+📊 EVALUATION RESULTS:
+   Understanding Score: 0/100
+   Confidence: high
+
+   Breakdown:
+   - Consistency: 0/25
+   - Specificity: 0/25
+   - Depth: 0/25
+   - Honesty: 0/25
+
+   🚩 Flags: hallucinated_details, generic_language
+
+   📝 Notes:
+   - The README explicitly states 'No Auth Required', which the answer completely contradicts by inventing a complex authentication system.
+   - The answer introduces multiple technologies (JWT, Redis, OAuth2, PostgreSQL) that are not mentioned in the README for any purpose, especially not authentication.
+   - The mention of rate limiting is a drift from the core question about authentication and also introduces an unmentioned technology (Redis) in this context.
+
+============================================================
+TEST: Question Avoidance
+============================================================
+Question: What are the limitations of the deterministic scoring approach?
+Answer: The project is well-designed with a clean architecture. It uses TypeScript for type safety and Next....
+
+📊 EVALUATION RESULTS:
+   Understanding Score: 0/100
+   Confidence: low
+
+   Breakdown:
+   - Consistency: 0/25
+   - Specificity: 0/25
+   - Depth: 0/25
+   - Honesty: 0/25
+
+   🚩 Flags: evaluation_failed
+
+   📝 Notes:
+   - Evaluation system error
+
+============================================================
+✅ All tests completed!
+============================================================
+
