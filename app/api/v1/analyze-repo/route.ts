@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { parseGitHubUrl, fetchReadme, fetchFileTree, fetchPackageJson } from '@/lib/github';
+import { parseGitHubUrl, fetchReadme, fetchFileTree, fetchPackageJson, fetchRepoContext } from '@/lib/github';
 import { calculateScore } from '@/lib/scoring';
 import { analyzeRepository } from '@/lib/llm';
 
@@ -38,16 +38,22 @@ export async function POST(request: NextRequest) {
         const { owner, name } = repoInfo;
 
         // Fetch repository data from GitHub
-        let readme: string;
-        let files: string[];
+        let readme: string = '';
+        let files: string[] = [];
         let packageJson: any = null;
+        let repoContext: string = '';
 
         try {
+            // 1. Fetch metadata
             [readme, files, packageJson] = await Promise.all([
                 fetchReadme(owner, name),
                 fetchFileTree(owner, name),
                 fetchPackageJson(owner, name)
             ]);
+
+            // 2. Fetch file contents for deep analysis
+            repoContext = await fetchRepoContext(owner, name, files);
+
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to fetch repository';
 
@@ -71,30 +77,34 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Calculate deterministic scores
-        const scorecard = calculateScore(readme, files);
+        // Calculate deterministic scores (Baseline)
+        const heuristicScorecard = calculateScore(readme, files);
 
-        // Get LLM analysis
-        const analysis = await analyzeRepository(readme, files, owner, name, packageJson);
+        // Get AI Deep Analysis
+        const analysis = await analyzeRepository(readme, files, repoContext, owner, name, packageJson);
 
-        // Build response
+        // Build enhanced response
         const response = {
             repo: {
                 owner,
                 name
             },
             summary: analysis.summary,
-            technical_questions: analysis.technical_questions,
             scorecard: {
-                overall: scorecard.overall,
+                ai_score: analysis.scorecard.score,
+                ai_reasoning: analysis.scorecard.reasoning,
+                ai_probability: analysis.scorecard.ai_probability_score,
+                ai_forensics: analysis.scorecard.ai_probability_reasoning,
+                heuristic_score: heuristicScorecard.overall,
                 breakdown: {
-                    documentation: scorecard.breakdown.documentation,
-                    structure: scorecard.breakdown.structure,
-                    completeness: scorecard.breakdown.completeness,
-                    engineering_maturity: scorecard.breakdown.engineering_maturity
+                    documentation: heuristicScorecard.breakdown.documentation,
+                    structure: heuristicScorecard.breakdown.structure,
+                    completeness: heuristicScorecard.breakdown.completeness,
+                    engineering_maturity: heuristicScorecard.breakdown.engineering_maturity
                 }
             },
-            notes: analysis.notes
+            technical_questions: analysis.technical_questions,
+            notes: analysis.technical_notes
         };
 
         return NextResponse.json(response, { status: 200 });

@@ -197,8 +197,7 @@ export async function fetchFileTree(owner: string, repo: string): Promise<string
             // Extract file paths (not directories)
             const files = data.tree
                 .filter((item: any) => item.type === 'blob')
-                .map((item: any) => item.path)
-                .slice(0, 500); // Limit to first 500 files
+                .map((item: any) => item.path);
 
             return files;
         } catch (error) {
@@ -210,4 +209,46 @@ export async function fetchFileTree(owner: string, repo: string): Promise<string
     }
 
     throw new Error('Repository not found or no accessible branches');
+}
+
+/**
+ * Fetch context from multiple files for AI analysis
+ */
+export async function fetchRepoContext(owner: string, repo: string, files: string[]): Promise<string> {
+    // Priority patterns to fetch first
+    const PRIORITY_PATTERNS = [
+        /package\.json$/,
+        /tsconfig\.json$/,
+        /next\.config\./,
+        /src\/.*\.(ts|tsx|js|jsx)$/,
+        /app\/.*\.(ts|tsx|js|jsx)$/,
+        /lib\/.*\.(ts|tsx|js|jsx)$/,
+        /components\/.*\.(ts|tsx|js|jsx)$/
+    ];
+
+    // Filter and sort files by priority
+    const priorityFiles = files.filter(file =>
+        PRIORITY_PATTERNS.some(pattern => pattern.test(file))
+    ).slice(0, 30); // Limit to top 30 prioritized files
+
+    const contextParts = [];
+
+    // Fetch content for each file (in parallel with concurrency limit)
+    const BATCH_SIZE = 5;
+    for (let i = 0; i < priorityFiles.length; i += BATCH_SIZE) {
+        const batch = priorityFiles.slice(i, i + BATCH_SIZE);
+        const results = await Promise.all(
+            batch.map(async (file) => {
+                try {
+                    const content = await fetchFileContent(owner, repo, file);
+                    return content ? `\n\n--- FILE: ${file} ---\n${content.slice(0, 5000)}` : null;
+                } catch {
+                    return null;
+                }
+            })
+        );
+        contextParts.push(...results.filter(Boolean));
+    }
+
+    return contextParts.join('\n');
 }

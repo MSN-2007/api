@@ -2,6 +2,25 @@
 
 A production-ready REST API that analyzes public GitHub repositories and returns structured engineering analysis with deterministic scoring.
 
+## How to Use (API Only)
+
+This tool is designed to be used as a backend API. You can interact with it using `curl`, Postman, or by building your own frontend.
+
+### 1. Analyze a Repository
+
+**Endpoint**: `POST /api/v1/analyze-repo`
+
+**Where to put the link**: In the `repo_url` field of the JSON body.
+
+**Example Request**:
+```bash
+curl -X POST http://localhost:3000/api/v1/analyze-repo \
+  -H "Content-Type: application/json" \
+  -d '{"repo_url": "https://github.com/your-username/your-repo"}'
+```
+
+---
+
 ## Features
 
 - **Repository Analysis**: `POST /api/v1/analyze-repo` - Analyze GitHub repositories

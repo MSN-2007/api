@@ -1,13 +1,17 @@
 /**
  * LLM integration for generating repository analysis
- * LLM is ONLY used for: summary, technical questions, and notes
- * LLM must NOT generate scores
  */
 
 export interface LLMAnalysis {
-    summary: string[];
+    summary: string;
+    scorecard: {
+        score: number;
+        reasoning: string;
+        ai_probability_score: number;
+        ai_probability_reasoning: string;
+    };
     technical_questions: string[];
-    notes: string[];
+    technical_notes: string[];
 }
 
 /**
@@ -16,6 +20,7 @@ export interface LLMAnalysis {
 export async function analyzeRepository(
     readme: string,
     files: string[],
+    repoContext: string,
     owner: string,
     repo: string,
     packageJson: any = null
@@ -23,170 +28,176 @@ export async function analyzeRepository(
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
-        // Return fallback if no API key
-        return {
-            summary: ['Repository analysis unavailable - Gemini API key not configured'],
-            technical_questions: [
-                'What is the primary purpose of this repository?',
-                'What are the main technologies used?',
-                'How is the project structured?'
-            ],
-            notes: ['LLM analysis unavailable']
-        };
+        return createFallbackAnalysis();
     }
 
     const techStack = extractTechStack(packageJson);
-    const prompt = buildPrompt(readme, files, owner, repo, techStack);
+    const prompt = buildPrompt(readme, files, repoContext, owner, repo, techStack);
 
     try {
         const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
             {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: [
-                        {
-                            parts: [
-                                {
-                                    text: prompt
-                                }
-                            ]
-                        }
-                    ],
+                    contents: [{ parts: [{ text: prompt }] }],
                     generationConfig: {
-                        temperature: 0.2, // Lower temperature for factual analysis
-                        maxOutputTokens: 1000
+                        temperature: 0.2,
+                        maxOutputTokens: 2500
                     }
                 })
             }
         );
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`Gemini API error: ${response.status} - ${JSON.stringify(errorData)}`);
+            throw new Error(`Gemini API error: ${response.status}`);
         }
 
         const data = await response.json();
         const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-        if (!content) {
-            throw new Error('No response from Gemini');
-        }
+        if (!content) throw new Error('No response from Gemini');
 
-        // Parse JSON response
         const parsed = parseJSONResponse(content);
-
-        // Validate and return
         return validateAnalysis(parsed);
     } catch (error) {
         console.error('LLM analysis failed:', error);
-
-        // Return fallback analysis
-        return {
-            summary: [
-                `Repository: ${owner}/${repo}`,
-                `Files: ${files.length}`,
-                'Detailed analysis unavailable'
-            ],
-            technical_questions: [
-                'What is the primary purpose of this repository?',
-                'What are the main dependencies and technologies?',
-                'How is testing and CI/CD configured?'
-            ],
-            notes: ['Automated analysis failed - using fallback']
-        };
+        return createFallbackAnalysis();
     }
-}
-
-/**
- * Extract tech stack from package.json
- */
-function extractTechStack(packageJson: any): string {
-    if (!packageJson) return 'Unknown (No package.json found)';
-
-    const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
-    const stack = Object.keys(dependencies).join(', ');
-
-    return stack || 'No dependencies found';
 }
 
 /**
  * Build prompt for LLM
  */
-function buildPrompt(readme: string, files: string[], owner: string, repo: string, techStack: string): string {
-    const fileList = files.slice(0, 100).join('\n'); // Limit to 100 files for prompt
+function buildPrompt(readme: string, files: string[], repoContext: string, owner: string, repo: string, techStack: string): string {
+    return `You are a Principal Software Architect and Code Forensics Expert.
+You are known for being BRUTALLY HONEST, cynicism, and high standards.
 
-    return `You are a senior engineer reviewing a GitHub project.
+PROJECT CONTEXT:
+Repo: ${owner}/${repo}
+Tech Stack: ${techStack}
 
-KNOWN TECH STACK:
-${techStack}
+SOURCE CODE CONTEXT (Truncated):
+${repoContext}
 
-README (truncated):
-${readme.slice(0, 15000) || 'No README found'}
+README CONTENT (Truncated):
+${readme.slice(0, 5000) || 'No README found'}
 
-FILE STRUCTURE (context):
-${fileList}
+YOUR MISSION:
+Perform a deep forensic analysis of this codebase. Do not be polite. Be objective and critical.
 
-TASKS:
-1. Summarize the project in 5 factual bullet points.
-2. Ask exactly 3 deep technical questions that test understanding of the detected tech stack.
-   - Questions must reference the stack explicitly.
-   - No generic questions like "How to install?".
-   - Focus on architecture, integration patterns, or specific library usage.
-3. Provide 3 specific notes/observations about the codebase maturity or structure.
+1. **AI FORENSICS**: Detect if this code was written by a human, an AI, or a mix. Look for:
+   - "Perfect" but generic comments.
+   - Repetitive boilerplate.
+   - Over-engineered solutions for simple problems.
+   - Lack of idiosyncratic/messy human logic.
 
-Return STRICT JSON format:
+2. **ENGINEERING SCORECARD**: Rate this project from 0-100 based on:
+   - **Architectural Integrity**: Is it spaghetti code or cleanly layered?
+   - **Complexity**: Is it actually solving a hard problem, or just a CRUD wrapper?
+   - **Production Readiness**: Would you deploy this?
+   - **Code Quality**: Is it readable, idiomatic, and robust?
+   *Scores > 90 are reserved for FAANG-level production libraries.*
+
+3. **INTERVIEW PREPARATION**: Generate 5-6 TECHNICAL questions that prove whether someone *actually* wrote this code.
+   - Questions must be based on *specific implementation details* found in the SOURCE CODE CONTEXT.
+   - DO NOT ask generic questions ("How does authentication work?").
+   - ASK specific questions ("Why did you use a reduce across the 'fetchContext' array instead of a simple loop in utils.ts?").
+
+OUTPUT JSON FORMAT (STRICT):
 {
-  "summary": ["point 1", "point 2", ...],
-  "technical_questions": ["question 1", "question 2", "question 3"],
-  "notes": ["note 1", "note 2", "note 3"]
+  "summary": "A 3-sentence executive summary of what this project ACTUALLY does (not what the README claims).",
+  "scorecard": {
+    "score": number, // 0-100 (Be strict!)
+    "reasoning": "One sentence explaining the score.",
+    "ai_probability_score": number, // 0-100% probability it is AI-generated
+    "ai_probability_reasoning": "Forensic evidence for why it looks Human vs AI."
+  },
+  "technical_questions": [
+    "Question 1 (Reference specific file/function)",
+    "Question 2",
+    "Question 3",
+    "Question 4",
+    "Question 5",
+    "Question 6"
+  ],
+  "technical_notes": [
+    "Specific observation 1",
+    "Specific observation 2",
+    "Specific observation 3",
+    "Specific observation 4"
+  ]
 }`;
 }
 
-/**
- * Parse JSON response from LLM
- */
 function parseJSONResponse(content: string): any {
     try {
-        // Remove markdown code blocks if present
-        let cleaned = content.trim();
-        if (cleaned.startsWith('```')) {
-            cleaned = cleaned.replace(/```json?\n?/g, '').replace(/```\n?$/g, '');
-        }
-
+        let cleaned = content.replace(/```json\n?/g, '').replace(/```\n?$/g, '').trim();
         return JSON.parse(cleaned);
-    } catch (error) {
-        throw new Error('Failed to parse LLM response as JSON');
+    } catch {
+        return {};
     }
 }
 
-/**
- * Validate and normalize LLM analysis
- */
 function validateAnalysis(parsed: any): LLMAnalysis {
-    const summary = Array.isArray(parsed.summary)
-        ? parsed.summary.slice(0, 5).filter((s: any) => typeof s === 'string')
-        : ['Analysis unavailable'];
-
     const technical_questions = Array.isArray(parsed.technical_questions)
-        ? parsed.technical_questions.slice(0, 3).filter((q: any) => typeof q === 'string')
-        : ['What is this project?', 'How does it work?', 'What are the key features?'];
+        ? parsed.technical_questions.slice(0, 6).filter((q: any) => typeof q === 'string')
+        : [];
 
-    // Ensure exactly 3 questions
-    while (technical_questions.length < 3) {
-        technical_questions.push('Additional technical details needed');
+    // Fallback if no questions found or not enough
+    if (technical_questions.length < 5) {
+        const fallbacks = [
+            "Explain the architectural patterns observed in the codebase.",
+            "How does this project handle error scenarios and edge cases?",
+            "What mechanisms are in place for performance optimization?",
+            "Describe the data flow within the core components.",
+            "How are external dependencies managed and isolated?",
+            "What security measures are implemented in the current codebase?"
+        ];
+        // Fill up to 5 questions
+        for (let i = technical_questions.length; i < 5; i++) {
+            technical_questions.push(fallbacks[i]);
+        }
     }
 
-    const notes = Array.isArray(parsed.notes)
-        ? parsed.notes.slice(0, 4).filter((n: any) => typeof n === 'string')
-        : ['No additional notes'];
-
     return {
-        summary: summary.length > 0 ? summary : ['Analysis unavailable'],
-        technical_questions: technical_questions.slice(0, 3),
-        notes: notes.length > 0 ? notes : ['No additional notes']
+        summary: typeof parsed.summary === 'string' ? parsed.summary : 'Analysis unavailable.',
+        scorecard: {
+            score: typeof parsed.scorecard?.score === 'number' ? parsed.scorecard.score : 50,
+            reasoning: typeof parsed.scorecard?.reasoning === 'string' ? parsed.scorecard.reasoning : 'No reasoning provided.',
+            ai_probability_score: typeof parsed.scorecard?.ai_probability_score === 'number' ? parsed.scorecard.ai_probability_score : 0,
+            ai_probability_reasoning: typeof parsed.scorecard?.ai_probability_reasoning === 'string' ? parsed.scorecard.ai_probability_reasoning : 'No forensics available.'
+        },
+        technical_questions: technical_questions,
+        technical_notes: Array.isArray(parsed.technical_notes)
+            ? parsed.technical_notes.slice(0, 5).filter((n: any) => typeof n === 'string')
+            : []
     };
+}
+
+function createFallbackAnalysis(): LLMAnalysis {
+    return {
+        summary: 'Analysis failed due to missing API key or error.',
+        scorecard: {
+            score: 0,
+            reasoning: 'Analysis failed.',
+            ai_probability_score: 0,
+            ai_probability_reasoning: 'Analysis failed.'
+        },
+        technical_questions: [
+            "Explain the architectural patterns observed in the codebase.",
+            "How does this project handle error scenarios and edge cases?",
+            "What mechanisms are in place for performance optimization?",
+            "Describe the data flow within the core components.",
+            "How are external dependencies managed and isolated?"
+        ],
+        technical_notes: ["Analysis failed. Using fallback questions."]
+    };
+}
+
+function extractTechStack(packageJson: any): string {
+    if (!packageJson) return 'Unknown';
+    const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
+    return Object.keys(deps).join(', ');
 }
